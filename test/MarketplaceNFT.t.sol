@@ -37,15 +37,6 @@ contract TestMarketplaceNFT is BaseTest {
         uint256 _price = 1 ether;
         uint256 _deadline = block.timestamp + 1 hours;
 
-        //MarketplaceNFT.Offer memory offer = MarketplaceNFT.Offer({
-        //  offerer : users.alice,
-        //  nftAddress : address(nft),
-        //  tokenId : 0,
-        //  price : _price,
-        //  deadline : _deadline,
-        //  isEnded : true
-        //});
-
         //bytes memory encodedOffer = abi.encode(offer);
         bytes memory data = abi.encode(_price, _deadline);
         
@@ -81,13 +72,16 @@ contract TestMarketplaceNFT is BaseTest {
 // _______________________________________
 
     function test_AcceptSellOffer_Success() public {
-        
+        vm.stopPrank();
+        vm.startPrank(users.alice);
         deal(users.alice, 100 ether);
 
         uint256 _price = 1 ether;
         uint256 _deadline = block.timestamp + 1 hours;
 
         bytes memory data = abi.encode(_price, _deadline);
+
+        nft.approve(address(marketplaceNFT),1);
         
         marketplaceNFT.createSellOffer(address(nft), users.alice, 1, data);
 
@@ -102,7 +96,7 @@ contract TestMarketplaceNFT is BaseTest {
 
         // Avance rapide au-delà de la date limite
         //vm.warp(16 days); // = vm.warp(block.timestamp + 16 days);
-        nft.approve(address(marketplaceNFT),1);
+      
 
         // vm.stopPrank();
         // vm.startPrank(users.bob);

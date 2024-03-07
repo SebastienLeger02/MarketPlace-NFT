@@ -147,7 +147,7 @@ contract MarketplaceNFT is IERC721Receiver {
 
         sellOfferIdCounter++;
 
-        // IERC721(_nftAddresss).safeTransferFrom(msg.sender, address(this), _tokenId);
+        IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
 
       //  IERC721Receiver.onERC721Received(msg.sender, address(this), _tokenId, data);
 
@@ -191,8 +191,7 @@ contract MarketplaceNFT is IERC721Receiver {
 
         if (nftContract.ownerOf(sellOffer.tokenId) != sellOffer.offerer) revert NotOwner();
 
-        nftContract.approve(address(this), sellOffer.tokenId);
-        nftContract.safeTransferFrom(sellOffer.offerer,address(this),sellOffer.tokenId);
+        nftContract.safeTransferFrom(address(this),msg.sender,sellOffer.tokenId);
         
     
           payable(sellOffer.offerer).transfer(priceUser);
