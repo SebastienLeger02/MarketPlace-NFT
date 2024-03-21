@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 // interface IERC721 {
 //     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
 // }
-contract MarketplaceNFT is IERC721Receiver {
+contract MarketplaceNFT is IERC721Receiver { // 
 
    
     // ================================================================
@@ -77,7 +77,7 @@ contract MarketplaceNFT is IERC721Receiver {
 
     error DeadlinePassed();
     error PriceNull();
-    error OwnerOfNft();
+    error NoOwnerOfNft();
     error AlwaysOnSell(); // la vente n'a pas été faite
     error TimeSpent(); // Deadline de l'offre, passée 
     error BadPrice(); // Le prix de l'offre n'ai pas le prix envoyé
@@ -86,6 +86,7 @@ contract MarketplaceNFT is IERC721Receiver {
     error NotOwner(); // msg.sender n'est pas le propriétaire
     error BelowZero(); // le prix doit être supérieur à zéro
 
+    event EtherReceived(address sender, uint256 amount);
     event SellOfferCreated(uint256 indexed sellOfferIdCounter);
     event SellOfferAccepted(uint256 indexed _sellOfferIdCounter);
     event SellOfferCancelled(uint256 indexed sellOfferIdCounter);
@@ -105,7 +106,7 @@ contract MarketplaceNFT is IERC721Receiver {
         uint256 tokenId, 
         bytes calldata data
     ) 
-        external override returns(bytes4) {
+        external pure override returns(bytes4) {
 
             return IERC721Receiver.onERC721Received.selector;
      }
@@ -121,7 +122,6 @@ contract MarketplaceNFT is IERC721Receiver {
 
     function createSellOffer(
         address _nftAddress,
-        address _offerer,
         uint256 _tokenId,
         bytes calldata data
         // uint256 _price,
@@ -131,13 +131,13 @@ contract MarketplaceNFT is IERC721Receiver {
     {
         (uint256 _price, uint256 _deadline) = abi.decode(data, (uint256, uint256));
 
-        if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender) revert OwnerOfNft();
+        if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender) revert NoOwnerOfNft();
         if(_price <= 0 ether) revert PriceNull();
         if(_deadline <= block.timestamp) revert DeadlinePassed();
 
 
         sellOffers[sellOfferIdCounter] = Offer({
-            offerer : _offerer,
+            offerer : msg.sender,
             nftAddress : _nftAddress,
             tokenId : _tokenId,
             price : _price,
@@ -149,7 +149,7 @@ contract MarketplaceNFT is IERC721Receiver {
 
         IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
 
-      //  IERC721Receiver.onERC721Received(msg.sender, address(this), _tokenId, data);
+       //IERC721Receiver.onERC721Received(msg.sender, address(this), _tokenId, data);
 
         emit SellOfferCreated(sellOfferIdCounter);    
         
@@ -175,6 +175,11 @@ contract MarketplaceNFT is IERC721Receiver {
         * to the buyer and the ETH to the seller.
         * Emits a 'SellOfferAccepted' event, with the offer ID as parameter.
     */
+    receive() external payable {
+        // Logique à exécuter lors de la réception d'Ethers
+        emit EtherReceived(msg.sender, msg.value);
+    }
+
     function acceptSellOffer(uint256 _sellOfferIdCounter) public payable {
 
         uint256 priceUser = msg.value;
@@ -184,19 +189,21 @@ contract MarketplaceNFT is IERC721Receiver {
         if(sellOffer.deadline < block.timestamp) revert TimeSpent();
         if(sellOffer.price != priceUser) revert BadPrice(); 
 
-        sellOffer.isEnded = true;
-        //sellOffers[_sellOfferIdCounter].isEnded = true;
+        sellOffers[_sellOfferIdCounter].isEnded = true;
         
         IERC721 nftContract = IERC721(sellOffer.nftAddress);
 
         if (nftContract.ownerOf(sellOffer.tokenId) != sellOffer.offerer) revert NotOwner();
 
         nftContract.safeTransferFrom(address(this),msg.sender,sellOffer.tokenId);
-        
     
-          payable(sellOffer.offerer).transfer(priceUser);
+         //IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
 
-         emit SellOfferAccepted(_sellOfferIdCounter);
+        payable(sellOffer.offerer).transfer(priceUser);
+
+        
+
+        emit SellOfferAccepted(_sellOfferIdCounter);
     }
     // -------------------------------------------------------------------
     // A voir pour la création d'une fonction de fallback et receive et Send() 
@@ -215,8 +222,8 @@ contract MarketplaceNFT is IERC721Receiver {
 
          Offer memory sellOffer = sellOffers[_sellOfferIdCounter];
 
-        if (sellOffer.isEnded) revert OfferClosed();
-        if (sellOffer.deadline <= block.timestamp) revert DeadlineNotPassed();
+        if (sellOffer.isEnded == true) revert OfferClosed();
+        if (sellOffer.deadline > block.timestamp) revert DeadlineNotPassed();
         if (sellOffer.offerer != msg.sender) revert NotOwner();
 
         sellOffers[_sellOfferIdCounter].isEnded = true;
@@ -235,13 +242,14 @@ contract MarketplaceNFT is IERC721Receiver {
         * Increment 'buyOfferIdCounter'.
         * Emits a 'BuyOfferCreated' event, with the offer ID as parameter.
     */
+
     function createBuyOffer(
             address _nftAddress,
             uint256 _tokenId,
             uint256 _deadline
         ) public payable {
             if(_deadline < block.timestamp) revert DeadlinePassed();
-            if(msg.value == 0) revert BelowZero();
+            if(msg.value <= 0) revert BelowZero();
 
             Offer memory offer = Offer({
             nftAddress : _nftAddress,
@@ -253,6 +261,10 @@ contract MarketplaceNFT is IERC721Receiver {
         });
 
         buyOffers[buyOfferIdCounter] = offer;
+
+        
+        
+        //IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
 
         buyOfferIdCounter++;
 
@@ -287,9 +299,11 @@ contract MarketplaceNFT is IERC721Receiver {
         buyOffers[_buyOfferIdCounter].isEnded = true;
 
         // Transfert du NFT au créateur de l'offre
-        IERC721(buyOffer.nftAddress).safeTransferFrom(msg.sender,buyOffer.offerer,buyOffer.tokenId);
+        IERC721(buyOffer.nftAddress).safeTransferFrom(msg.sender,buyOffer.offerer, buyOffer.tokenId);
 
-        payable(msg.sender).transfer(buyOffer.price);
+        //payable(msg.sender).transfer(buyOffer.price);
+        (bool enviado,) = payable(buyOffer.offerer).call{value: buyOffer.price}("");
+        require(enviado, "Error al enviar Ether");
 
         emit BuyOfferAccepted(_buyOfferIdCounter);
 
