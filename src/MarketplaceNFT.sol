@@ -65,11 +65,6 @@ contract MarketplaceNFT is IERC721Receiver { //
         bool isEnded;
     }
 
-    constructor(string memory _marketplaceName)  {
-        _marketplaceName = marketplaceName;
-       // owner = payable(msg.sender);
-        
-    }
 
     // ================================================================
     // |                            LOGICA                            |
@@ -86,13 +81,28 @@ contract MarketplaceNFT is IERC721Receiver { //
     error NotOwner(); // msg.sender n'est pas le propriétaire
     error BelowZero(); // le prix doit être supérieur à zéro
 
-    event EtherReceived(address sender, uint256 amount);
+    event EtherReceived(address indexed sender, uint256 indexed amount);
     event SellOfferCreated(uint256 indexed sellOfferIdCounter);
     event SellOfferAccepted(uint256 indexed _sellOfferIdCounter);
     event SellOfferCancelled(uint256 indexed sellOfferIdCounter);
     event BuyOfferCreated(uint256 indexed buyOfferIdCounter);
     event BuyOfferAccepted(uint256 indexed _buyOfferIdCounter);
     event BuyOfferCancelled(uint256 indexed _buyOfferIdCounter);
+
+
+    
+    modifier NFTOwner(address nftAddress, uint256 tokenId) {
+        if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) {
+            revert NoOwnerOfNft();
+        }
+        _;
+    }
+
+    constructor(string memory _marketplaceName)  {
+        _marketplaceName = marketplaceName;
+       // owner = payable(msg.sender);
+        
+    }
 
     /**
         * @notice function 'onERC721Received' inherited from IERC721Receiver, 
@@ -111,6 +121,11 @@ contract MarketplaceNFT is IERC721Receiver { //
             return IERC721Receiver.onERC721Received.selector;
      }
 
+    receive() external payable {
+        // Logique à exécuter lors de la réception d'Ethers
+        emit EtherReceived(msg.sender, msg.value);
+    }
+
     /**
         * @notice function 'createSellOffer' , 
         * @dev Creates a sell order for an NFT by specifying the NFT contract address, 
@@ -127,11 +142,11 @@ contract MarketplaceNFT is IERC721Receiver { //
         // uint256 _price,
         // uint256 _deadline
     ) 
-        public 
+        public NFTOwner(_nftAddress, _tokenId)
     {
         (uint256 _price, uint256 _deadline) = abi.decode(data, (uint256, uint256));
 
-        if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender) revert NoOwnerOfNft();
+        //if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender) revert NoOwnerOfNft();
         if(_price <= 0 ether) revert PriceNull();
         if(_deadline <= block.timestamp) revert DeadlinePassed();
 
@@ -151,7 +166,7 @@ contract MarketplaceNFT is IERC721Receiver { //
 
        //IERC721Receiver.onERC721Received(msg.sender, address(this), _tokenId, data);
 
-        emit SellOfferCreated(sellOfferIdCounter);    
+        emit SellOfferCreated(sellOfferIdCounter);
         
     }
 
@@ -175,14 +190,11 @@ contract MarketplaceNFT is IERC721Receiver { //
         * to the buyer and the ETH to the seller.
         * Emits a 'SellOfferAccepted' event, with the offer ID as parameter.
     */
-    receive() external payable {
-        // Logique à exécuter lors de la réception d'Ethers
-        emit EtherReceived(msg.sender, msg.value);
-    }
 
     function acceptSellOffer(uint256 _sellOfferIdCounter) public payable {
 
         uint256 priceUser = msg.value;
+
         Offer memory sellOffer = sellOffers[_sellOfferIdCounter];
         
         if(sellOffer.isEnded == true) revert AlwaysOnSell();
@@ -193,15 +205,9 @@ contract MarketplaceNFT is IERC721Receiver { //
         
         IERC721 nftContract = IERC721(sellOffer.nftAddress);
 
-        if (nftContract.ownerOf(sellOffer.tokenId) != sellOffer.offerer) revert NotOwner();
-
         nftContract.safeTransferFrom(address(this),msg.sender,sellOffer.tokenId);
-    
-         //IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
 
         payable(sellOffer.offerer).transfer(priceUser);
-
-        
 
         emit SellOfferAccepted(_sellOfferIdCounter);
     }
@@ -261,11 +267,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         });
 
         buyOffers[buyOfferIdCounter] = offer;
-
         
-        
-        //IERC721(_nftAddress).safeTransferFrom(msg.sender, address(this), _tokenId);
-
         buyOfferIdCounter++;
 
          emit BuyOfferCreated(buyOfferIdCounter);
@@ -293,7 +295,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         Offer memory buyOffer = buyOffers[_buyOfferIdCounter];
 
         if((IERC721(buyOffer.nftAddress).ownerOf(buyOffer.tokenId) != msg.sender)) revert NotOwner();
-        if(buyOffer.isEnded) revert OfferClosed();
+        if(buyOffer.isEnded == true) revert OfferClosed();
         if(buyOffer.deadline < block.timestamp) revert DeadlinePassed();
 
         buyOffers[_buyOfferIdCounter].isEnded = true;
@@ -301,8 +303,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         // Transfert du NFT au créateur de l'offre
         IERC721(buyOffer.nftAddress).safeTransferFrom(msg.sender,buyOffer.offerer, buyOffer.tokenId);
 
-        //payable(msg.sender).transfer(buyOffer.price);
-        (bool enviado,) = payable(buyOffer.offerer).call{value: buyOffer.price}("");
+        (bool enviado,) = payable(msg.sender).call{value: buyOffer.price}("");
         require(enviado, "Error al enviar Ether");
 
         emit BuyOfferAccepted(_buyOfferIdCounter);
@@ -327,30 +328,13 @@ contract MarketplaceNFT is IERC721Receiver { //
 
         buyOffers[_buyOfferIdCounter].isEnded = true;
 
-    // Transfert de l'ETH au créateur de l'offre
-        payable(msg.sender).transfer(buyOffer.price);
+        // Transfert de l'ETH au créateur de l'offre
+        (bool enviado,) = payable(msg.sender).call{value: buyOffer.price}("");
+        require(enviado, "Error al enviar Ether");
 
-    // Evénement
+        // Evénement
         emit BuyOfferCancelled(_buyOfferIdCounter);
 
     }
-
-
-
-
-
-
-    // event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
-    // event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
-    // event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
-    // function balanceOf(address owner) external view returns (uint256 balance);
-    // function ownerOf(uint256 tokenId) external view returns (address owner);
-    // function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
-    // function safeTransferFrom(address from, address to, uint256 tokenId) external;
-    // function transferFrom(address from, address to, uint256 tokenId) external;
-    // function approve(address to, uint256 tokenId) external;
-    // function setApprovalForAll(address operator, bool approved) external;
-    // function getApproved(uint256 tokenId) external view returns (address operator);
-    // function isApprovedForAll(address owner, address operator) external view returns (bool);
 
 }
