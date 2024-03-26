@@ -70,11 +70,9 @@ contract MarketplaceNFT is IERC721Receiver { //
     // |                            LOGICA                            |
     // ================================================================
 
-    error DeadlinePassed();
-    error PriceNull();
-    error NoOwnerOfNft();
-    error AlwaysOnSell(); // la vente n'a pas été faite
-    error TimeSpent(); // Deadline de l'offre, passée 
+    error DeadlinePassed();// Deadline de l'offre, passée 
+    error PriceNull(); // Mauvais prix
+    error NoOwnerOfNft(); // N'est pas l'owner du NFT
     error BadPrice(); // Le prix de l'offre n'ai pas le prix envoyé
     error OfferClosed(); // Offre terminée
     error DeadlineNotPassed(); // Temps limité toujours pas passée
@@ -138,9 +136,8 @@ contract MarketplaceNFT is IERC721Receiver { //
     function createSellOffer(
         address _nftAddress,
         uint256 _tokenId,
-        bytes calldata data
-        // uint256 _price,
-        // uint256 _deadline
+        bytes calldata data 
+        // data =  uint256 _price, uint256 _deadline
     ) 
         public NFTOwner(_nftAddress, _tokenId)
     {
@@ -149,7 +146,6 @@ contract MarketplaceNFT is IERC721Receiver { //
         //if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender) revert NoOwnerOfNft();
         if(_price <= 0 ether) revert PriceNull();
         if(_deadline <= block.timestamp) revert DeadlinePassed();
-
 
         sellOffers[sellOfferIdCounter] = Offer({
             offerer : msg.sender,
@@ -197,8 +193,8 @@ contract MarketplaceNFT is IERC721Receiver { //
 
         Offer memory sellOffer = sellOffers[_sellOfferIdCounter];
         
-        if(sellOffer.isEnded == true) revert AlwaysOnSell();
-        if(sellOffer.deadline < block.timestamp) revert TimeSpent();
+        if(sellOffer.isEnded == true) revert OfferClosed();
+        if(sellOffer.deadline < block.timestamp) revert DeadlinePassed();
         if(sellOffer.price != priceUser) revert BadPrice(); 
 
         sellOffers[_sellOfferIdCounter].isEnded = true;
@@ -228,9 +224,9 @@ contract MarketplaceNFT is IERC721Receiver { //
 
          Offer memory sellOffer = sellOffers[_sellOfferIdCounter];
 
-        if (sellOffer.isEnded == true) revert OfferClosed();
-        if (sellOffer.deadline > block.timestamp) revert DeadlineNotPassed();
-        if (sellOffer.offerer != msg.sender) revert NotOwner();
+        if(sellOffer.isEnded == true) revert OfferClosed();
+        if(sellOffer.deadline > block.timestamp) revert DeadlineNotPassed();
+        if(sellOffer.offerer != msg.sender) revert NotOwner();
 
         sellOffers[_sellOfferIdCounter].isEnded = true;
 
@@ -294,7 +290,7 @@ contract MarketplaceNFT is IERC721Receiver { //
     function acceptBuyOffer(uint256 _buyOfferIdCounter) public {
         Offer memory buyOffer = buyOffers[_buyOfferIdCounter];
 
-        if((IERC721(buyOffer.nftAddress).ownerOf(buyOffer.tokenId) != msg.sender)) revert NotOwner();
+        if((IERC721(buyOffer.nftAddress).ownerOf(buyOffer.tokenId) != msg.sender)) revert NoOwnerOfNft();
         if(buyOffer.isEnded == true) revert OfferClosed();
         if(buyOffer.deadline < block.timestamp) revert DeadlinePassed();
 
@@ -332,7 +328,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         (bool enviado,) = payable(msg.sender).call{value: buyOffer.price}("");
         require(enviado, "Error al enviar Ether");
 
-        // Evénement
+        // Event BuyOfferCanceled()
         emit BuyOfferCancelled(_buyOfferIdCounter);
 
     }
