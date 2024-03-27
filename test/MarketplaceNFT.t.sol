@@ -21,19 +21,17 @@ contract TestMarketplaceNFT is BaseTest {
 
     function setUp() public override {
         super.setUp();
+        // Creation of new instances of "MarketplaceNFT" and ProjectFinalNFT
         marketplaceNFT = new MarketplaceNFT("MyMarketPlaceNFT");
         nft = new ProjectFinalNFT();
 
-        // 
+        // Distribution of dummy NFT to different roles
         nft.mint(users.alice, 1);
         nft.mint(users.bob, 2);
         nft.mint(users.charlie,3);
         vm.startPrank(users.alice);
-
-        assertEq(users.alice.balance , 1000 ether);
-        assertEq(users.bob.balance , 1000 ether);
-        assertEq(users.charlie.balance , 1000 ether);
         
+        // Ether distribution takes place in Utilities.sol
     }
 
 
@@ -41,44 +39,42 @@ contract TestMarketplaceNFT is BaseTest {
 // --------   CreateSellOffer ------------
 // _______________________________________
     function test_CreateSellOffer_Success() public {
-        //deal(users.alice, 100 ether);
-       //marketplaceNFT.createSellOffer(_addrNFT, _tokenId , _price, _deadline);
     
         uint256 _price = 1 ether;
         uint256 _deadline = block.timestamp + 1 hours;
 
-        //Regroupe ou encode les variable _price et _deadline
+        //Groups or encodes _price and _deadline variables
         bytes memory data = abi.encode(_price, _deadline);
 
-        // Controle si le counter de Id soit bien initiliser à zéro avant de commencer
+        // Check that the Id counter is set to zero before starting.
         assertEq(marketplaceNFT.sellOfferIdCounter(), 0);
 
-        // Le contrat qui créer les NFT est d'accord pour transfert le NFT avec ID 1 au contrat "MarketplaceNFT"
+        // The contract creating the NFT agrees to transfer the NFT with ID 1 to the "MarketplaceNFT" contract.
         nft.approve(address(marketplaceNFT),1);
 
-        // Prépare et controle l'evenement SellOfferCreated à être emit
+        // Prepares and controls the SellOfferCreated event to be issued
         vm.expectEmit(true,false,false,false);
         emit SellOfferCreated(1);
         
-        // Appelle la fonction creatSellOffer() avec les arguments: 
-        //  address _nftAddress,
+        // Calls the creatSellOffer() function with the arguments: 
+        // address _nftAddress,
         // uint256 _tokenId,
         // bytes calldata data
         marketplaceNFT.createSellOffer(address(nft), 1, data);
 
-        // Vérifier que l'offre a été créée - Récupère struct Offer
+        // Check that the offer has been created - Retrieve struct Offer
         MarketplaceNFT.Offer memory createdOffer = marketplaceNFT.getSellOffer(0);
         
-        // Récupère, le struct "Offer" afin de pouvoir vérifier ces élèments   
-        assertEq(createdOffer.offerer, users.alice); // Vérifie si le propétaire de l'offre est "alice"
-        assertEq(createdOffer.nftAddress, address(nft)); // Vérifie si le NFT est bien celui de l'offre 
-        assertEq(createdOffer.tokenId, 1); // Vérifie l'ID du token
-        assertEq(createdOffer.price, _price); // Vérifie le prix 
-        assertEq(createdOffer.deadline, _deadline); // Vérifie la date butoire
-        assertEq(createdOffer.isEnded, false); // Vérifie si l'offre n'est pas terminé
-        // Vérifier que le NFT a été transféré au contrat
+        // Retrieve the struct "Offer" in order to verify these elements   
+        assertEq(createdOffer.offerer, users.alice); // Check if the owner of the offer is "alice".
+        assertEq(createdOffer.nftAddress, address(nft)); // Checks if the NFT is the same as the one in the offer 
+        assertEq(createdOffer.tokenId, 1); // Checks token ID
+        assertEq(createdOffer.price, _price); // Checks price 
+        assertEq(createdOffer.deadline, _deadline); // Check deadline
+        assertEq(createdOffer.isEnded, false); // Check if the offer is still open
+        // Check that the NFT has been transferred to the contract
         assertEq(nft.ownerOf(1), address(marketplaceNFT));
-        // Vérifie si le compteur c'est incrémenté de 1
+        // Checks if the counter has incremented by 1
         assertEq(marketplaceNFT.sellOfferIdCounter(), 1);
         
     }
@@ -93,7 +89,7 @@ contract TestMarketplaceNFT is BaseTest {
 
         nft.approve(address(marketplaceNFT),1);
 
-        // Test le revert si le prix est null
+        // Test revert if price is null
         vm.expectRevert(MarketplaceNFT.PriceNull.selector);
         marketplaceNFT.createSellOffer(address(nft), 1, data);
 
@@ -101,7 +97,7 @@ contract TestMarketplaceNFT is BaseTest {
         _deadline = block.timestamp;
         data = abi.encode(_price, _deadline);
 
-        // Test le revert si la deadline est passé
+        // Test the revert if the deadline has passed
         vm.expectRevert(MarketplaceNFT.DeadlinePassed.selector);
         marketplaceNFT.createSellOffer(address(nft), 1, data);
 
@@ -116,7 +112,6 @@ contract TestMarketplaceNFT is BaseTest {
         uint256 _priceAlice = 1 ether;
         uint256 _deadlineAlice = block.timestamp + 1 hours;
 
-        //bytes memory encodedOffer = abi.encode(offer);
         bytes memory dataAlice = abi.encode(_priceAlice, _deadlineAlice);
 
         assertEq(marketplaceNFT.sellOfferIdCounter(), 0);
@@ -125,7 +120,7 @@ contract TestMarketplaceNFT is BaseTest {
         
         marketplaceNFT.createSellOffer(address(nft), 1, dataAlice);
 
-        // Vérifier que l'offre a été créée - Récupère struct Offer et controler le getSellOffer id 0
+        // Check that the offer has been created - Retrieve struct Offer and check getSellOffer id 0
         MarketplaceNFT.Offer memory createdOfferAlice = marketplaceNFT.getSellOffer(0);
 
         assertEq(createdOfferAlice.offerer, users.alice);
@@ -134,9 +129,9 @@ contract TestMarketplaceNFT is BaseTest {
         assertEq(createdOfferAlice.price, _priceAlice);
         assertEq(createdOfferAlice.deadline, _deadlineAlice);
         assertEq(createdOfferAlice.isEnded, false);
-        // Vérifier que le NFT a été transféré au contrat
+        // Check that the NFT has been transferred to the contract
         assertEq(nft.ownerOf(1), address(marketplaceNFT));
-        // Vérifie si le compteur c'est incrémenté de 1
+        // Checks if the counter has incremented by 1
         assertEq(marketplaceNFT.sellOfferIdCounter(), 1);
 
         //-----------------------------------------------------
@@ -157,7 +152,7 @@ contract TestMarketplaceNFT is BaseTest {
         
         marketplaceNFT.createSellOffer(address(nft), 2, dataBob);
 
-        // Vérifier que l'offre a été créée - Récupère struct Offer et controler le getSellOffer id 1
+        // Check that the offer has been created - Retrieve struct Offer and check getSellOffer id 1
         MarketplaceNFT.Offer memory createdOfferBob = marketplaceNFT.getSellOffer(1);
 
         assertEq(createdOfferBob.offerer, users.bob);
@@ -166,9 +161,9 @@ contract TestMarketplaceNFT is BaseTest {
         assertEq(createdOfferBob.price, _priceBob);
         assertEq(createdOfferBob.deadline, _deadlineBob);
         assertEq(createdOfferBob.isEnded, false);
-        // Vérifier que le NFT a été transféré au contrat
+        // Check that the NFT has been transferred to the contract
         assertEq(nft.ownerOf(2), address(marketplaceNFT));
-        // Vérifie si le compteur c'est incrémenté de 1
+        // Checks if the counter has incremented by 1
         assertEq(marketplaceNFT.sellOfferIdCounter(), 2);
 
         //-----------------------------------------------------
@@ -180,7 +175,6 @@ contract TestMarketplaceNFT is BaseTest {
         uint256 _priceCharlie = 20 ether;
         uint256 _deadlineCharlie = block.timestamp + 1 hours;
 
-        //bytes memory encodedOffer = abi.encode(offer);
         bytes memory dataCharlie = abi.encode(_priceCharlie, _deadlineCharlie);
 
         assertEq(marketplaceNFT.sellOfferIdCounter(), 2);
@@ -189,7 +183,7 @@ contract TestMarketplaceNFT is BaseTest {
         
         marketplaceNFT.createSellOffer(address(nft), 3, dataCharlie);
 
-        // Vérifier que l'offre a été créée - Récupère struct Offer et controler le getSellOffer id 2
+        // Check that the offer has been created - Retrieve struct Offer and check getSellOffer id 2
         MarketplaceNFT.Offer memory createdOfferCharlie = marketplaceNFT.getSellOffer(2);
 
         assertEq(createdOfferCharlie.offerer, users.charlie);
@@ -198,9 +192,9 @@ contract TestMarketplaceNFT is BaseTest {
         assertEq(createdOfferCharlie.price, _priceCharlie);
         assertEq(createdOfferCharlie.deadline, _deadlineCharlie);
         assertEq(createdOfferCharlie.isEnded, false);
-        // Vérifier que le NFT a été transféré au contrat
+        // Check that the NFT has been transferred to the contract
         assertEq(nft.ownerOf(3), address(marketplaceNFT));
-        // Vérifie si le compteur c'est incrémenté de 1
+        // Checks if the counter has incremented by 1
         assertEq(marketplaceNFT.sellOfferIdCounter(), 3);
 
     }
@@ -220,38 +214,39 @@ contract TestMarketplaceNFT is BaseTest {
         
         marketplaceNFT.createSellOffer(address(nft), 1, data);
 
-        // Vérification de la création de l'offre
+        // Checking offer creation (Another way to call up the struct in the main contract.)
         (address nftAddress, uint256 tokenId, address offerer, uint256 price, uint256 deadline, bool isEnded) = marketplaceNFT.sellOffers(0);
+        
         assertEq(nftAddress, address(nft));
-        assertEq(offerer, users.alice); // Vérifier le créateur de l'offre
+        assertEq(offerer, users.alice); 
         assertEq(tokenId, 1);
         assertEq(price, 10 ether);
         assertEq(deadline, block.timestamp + 1 hours);
-        assertEq(isEnded, false); // Vérifier l'état initial "non terminée"
+        assertEq(isEnded, false); 
 
-        // Avance rapide au-delà de la date limite
+        // Fast advance beyond deadline
         //vm.warp(16 days); // = vm.warp(block.timestamp + 16 days);
       
         vm.stopPrank();
         vm.startPrank(users.bob);
 
-        // Prépare et controle l'evenement SellOfferAccepted à être emit
+        // Prepares and controls the SellOfferAccepted event to be issued
         vm.expectEmit(true,false,false,false);
         emit SellOfferAccepted(0);
         
         // Accéptation de l'offre
         marketplaceNFT.acceptSellOffer{value: 10 ether}(0);
 
-        // Vérification de la modification de l'état
+        // Check for status change
         (nftAddress, tokenId,offerer, price, deadline, isEnded) = marketplaceNFT.sellOffers(0);
         assertEq(offerer, users.alice);
         assertEq(price, 10 ether);
-        assert(deadline > block.timestamp); // La deadline ne change pas
-        assertEq(isEnded, true); // Vérifier l'état final "terminée"
+        assert(deadline > block.timestamp); // The deadline remains unchanged
+        assertEq(isEnded, true); // Check "finished" final status
 
-        // vérifie qye le nouveau owner soit Bob
+        // Check that the new owner is Bob
         assertEq(nft.ownerOf(1), users.bob);
-        // Vérifie les balance de Bob et Alice après le transfert
+        // Checks Bob and Alice's balance after transfer
         assertEq(users.bob.balance, 990 ether); 
         assertEq(users.alice.balance, 1010 ether); 
     }
@@ -270,41 +265,42 @@ contract TestMarketplaceNFT is BaseTest {
         
         marketplaceNFT.createSellOffer(address(nft), 2, data);
 
-        // Vérification de la création de l'offre
+        // Checking offer creation
         (address nftAddress, uint256 tokenId, address offerer, uint256 price, uint256 deadline, bool isEnded) = marketplaceNFT.sellOffers(0);
+        
         assertEq(nftAddress, address(nft));
-        assertEq(offerer, users.bob); // Vérifier le créateur de l'offre
+        assertEq(offerer, users.bob); 
         assertEq(tokenId, 2);
         assertEq(price, 2 ether);
         assertEq(deadline, block.timestamp + 2 hours);
-        assertEq(isEnded, false); // Vérifier l'état initial "non terminée"
+        assertEq(isEnded, false); 
 
-        // // Avance rapide au-delà de la date limite
-        // //vm.warp(16 days); // = vm.warp(block.timestamp + 16 days);
+        // Fast advance beyond deadline
+        // vm.warp(16 days); // = vm.warp(block.timestamp + 16 days);
       
         vm.stopPrank();
         vm.startPrank(users.alice);
         deal(users.alice, 100 ether);
 
-        // Test le revert si le prix est null
+        // Test revert if price is null
         vm.expectRevert(MarketplaceNFT.BadPrice.selector);
         marketplaceNFT.acceptSellOffer{value: 1 ether}(0);
 
-        // Test le revert si la deadline est dépassée
+        // Test the revert if the deadline has passed
         vm.warp(3 hours);
         vm.expectRevert(MarketplaceNFT.DeadlinePassed.selector);
         marketplaceNFT.acceptSellOffer{value: 2 ether}(0);
 
-        // Tiempo en conformidad para acceptar la offerta 
+        // Time in compliance to accept the offer 
         vm.warp(1 hours);
 
-        //Alice accepta la orden de venta
+        // Alice accepts the sales order
         marketplaceNFT.acceptSellOffer{value: 2 ether}(0);
 
         (nftAddress, tokenId,offerer, price, deadline, isEnded) = marketplaceNFT.sellOffers(0);
        
         console.log(isEnded); // = true
-        // Test le revert si l'offre est terminée
+        // Test the revert if the offer has ended
         vm.expectRevert(MarketplaceNFT.OfferClosed.selector);
         marketplaceNFT.acceptSellOffer{value: 2 ether}(0);
 
@@ -325,8 +321,9 @@ contract TestMarketplaceNFT is BaseTest {
         
         marketplaceNFT.createSellOffer(address(nft), 1, data);
 
-        // Vérification de la création de l'offre
+        // Checking offer creation
         (address nftAddress, uint256 tokenId, address offerer, uint256 price, uint256 deadline, bool isEnded) = marketplaceNFT.sellOffers(0);
+        
         assertEq(nftAddress, address(nft));
         assertEq(offerer, users.alice); 
         assertEq(tokenId, 1);
@@ -336,14 +333,14 @@ contract TestMarketplaceNFT is BaseTest {
         
         vm.warp(block.timestamp + 2 hours);
 
-        // Prépare et controle l'evenement SellOfferCancelled à être emit
+        // Prepares and controls the SellOfferCancelled event to be issued
         vm.expectEmit(true,false,false,false);
         emit SellOfferCancelled(0);
 
-        // alice accepta orden venta
+        // Alice accepta orden venta
         marketplaceNFT.cancelSellOffer(0);
 
-        // Vérifie si Alice est le owner du NFT
+        // Checks if Alice is the owner of the NFT
         assertEq(nft.ownerOf(tokenId), users.alice);
 
     }
@@ -359,16 +356,17 @@ contract TestMarketplaceNFT is BaseTest {
         
         marketplaceNFT.createSellOffer(address(nft), 1, data);
 
-        // Vérification de la création de l'offre
+        // Checking offer creation
         (address nftAddress, uint256 tokenId, address offerer, uint256 price, uint256 deadline, bool isEnded) = marketplaceNFT.sellOffers(0);
+      
         assertEq(nftAddress, address(nft));
-        assertEq(offerer, users.alice); // Vérifier le créateur de l'offre
+        assertEq(offerer, users.alice); 
         assertEq(tokenId, 1);
         assertEq(price, 1 ether);
         assertEq(deadline, block.timestamp + 1 hours);
-        assertEq(isEnded, false); // Vérifier l'état initial "non terminée"
+        assertEq(isEnded, false); 
 
-        // vérifie que deadline ne soit pas passée
+        // Check that deadline has not passed
         vm.warp(block.timestamp);
         vm.expectRevert(MarketplaceNFT.DeadlineNotPassed.selector);
         marketplaceNFT.cancelSellOffer(0);
@@ -376,18 +374,18 @@ contract TestMarketplaceNFT is BaseTest {
         vm.stopPrank();
         vm.startPrank(users.bob);
         vm.warp(block.timestamp + 2 hours);
-        // // vérifie que si Offerer n'est pas le msg.sender
+        // Checks that if Offerer is not the msg.sender
         vm.expectRevert(MarketplaceNFT.NotOwner.selector);
         marketplaceNFT.cancelSellOffer(0);
 
 
         vm.stopPrank();
         vm.startPrank(users.alice);
-        // alice accepta orden venta
+        // Alice accepts sales order
         marketplaceNFT.cancelSellOffer(0);
 
         (,,,, deadline,) = marketplaceNFT.sellOffers(0);
-        // Vérifie que l'offre n'est pas terminé
+        // Check that the offer is not closed
         console.log(isEnded);
         vm.expectRevert(MarketplaceNFT.OfferClosed.selector);
         marketplaceNFT.cancelSellOffer(0);
@@ -405,14 +403,14 @@ contract TestMarketplaceNFT is BaseTest {
 
         uint256 tokenID = 1;
         
-        // Vérification de l'initialisation du compteur à 0
+        // Check counter initialization to 0
         assertEq(marketplaceNFT.buyOfferIdCounter(), 0);
 
-        // Prépare et controle l'evenement BuyOfferCreated à être emit
+        // Prepares and controls the BuyOfferCreated event to be issued
         vm.expectEmit(true,false,false,false);
         emit BuyOfferCreated(1);
 
-        // Création d'une offre d'achat
+        // Creating a purchase offer
         marketplaceNFT.createBuyOffer{value: 1 ether}(
             address(nft),
             tokenID,
@@ -427,7 +425,7 @@ contract TestMarketplaceNFT is BaseTest {
         assertEq(createdOffer.price, 1 ether);
         assertEq(createdOffer.deadline, block.timestamp + 1 days);
         assertEq(createdOffer.isEnded, false);
-
+         // Checks counter after function execution
         assertEq(marketplaceNFT.buyOfferIdCounter(), 1);
 
     }
@@ -436,7 +434,7 @@ contract TestMarketplaceNFT is BaseTest {
 
         uint256 deadline = block.timestamp;
 
-        //Vérifie que la deadline ne soitpas dépassé DeadlinePassed()
+        // Checks that the deadline has not been exceeded DeadlinePassed()
         vm.warp(1 days);
         vm.expectRevert(MarketplaceNFT.DeadlinePassed.selector);
         marketplaceNFT.createBuyOffer{value: 1 ether}(
@@ -445,13 +443,14 @@ contract TestMarketplaceNFT is BaseTest {
             deadline 
         );
 
-        // Vérifie que l'envoie d'ether ne soit pas zero BelowZero()
+        // Checks that the ether sent is not zero BelowZero()
         vm.expectRevert(MarketplaceNFT.BelowZero.selector);
         marketplaceNFT.createBuyOffer{value: 0 ether}(
             address(nft),
             1,
             block.timestamp
         );
+        
     }
     
 // _______________________________________
@@ -465,10 +464,9 @@ contract TestMarketplaceNFT is BaseTest {
 
         uint256 tokenID = 1;
         
-        // Vérification de l'initialisation du compteur à 0
         assertEq(marketplaceNFT.buyOfferIdCounter(), 0);
 
-        // Création d'une offre d'achat
+        // Creating a purchase offer
         marketplaceNFT.createBuyOffer{value: 1 ether}(
             address(nft),
             tokenID,
@@ -494,10 +492,9 @@ contract TestMarketplaceNFT is BaseTest {
     
         uint256 tokenIDCharlie = 2;
 
-        // Vérification de l'initialisation du compteur à 0
         assertEq(marketplaceNFT.buyOfferIdCounter(), 1);
 
-        // Création d'une offre d'achat
+        // Creating a purchase offer
         marketplaceNFT.createBuyOffer{value: 2 ether}(
             address(nft),
             tokenIDCharlie,
@@ -516,41 +513,6 @@ contract TestMarketplaceNFT is BaseTest {
         assertEq(marketplaceNFT.buyOfferIdCounter(), 2);
     }
 
-    // function test_GetBuyOffer_Failed() public {
-    //     uint256 tokenID = 1;
-        
-    //     // Vérification de l'initialisation du compteur à 0
-    //     assertEq(marketplaceNFT.buyOfferIdCounter(), 0);
-
-    //     // Création d'une offre d'achat
-    //     marketplaceNFT.createBuyOffer{value: 1 ether}(
-    //         address(nft),
-    //         tokenID,
-    //         block.timestamp + 1 days
-    //     );
-
-    //     // Vérification de l'initialisation du compteur à 1
-    //     assertEq(marketplaceNFT.buyOfferIdCounter(), 1);
-
-    //     vm.stopPrank();
-    //     vm.startPrank(users.charlie);
-    
-    //     uint256 tokenIDCharlie = 2;
-
-    //     // Création d'une offre d'achat
-    //     marketplaceNFT.createBuyOffer{value: 2 ether}(
-    //         address(nft),
-    //         tokenIDCharlie,
-    //         block.timestamp + 1 days
-    //     );
-    //     // Vérification de l'initialisation du compteur à 2
-    //     assertEq(marketplaceNFT.buyOfferIdCounter(), 2);
-
-    //     vm.expectRevert();
-    //     marketplaceNFT.getBuyOffer(5);
-
-    // }
-
 // _______________________________________
 // --------   AcceptBuyOffer -------------
 // _______________________________________
@@ -561,8 +523,7 @@ contract TestMarketplaceNFT is BaseTest {
 
         uint256 tokenID = 1;
 
-        //nft.approve(address(marketplaceNFT),tokenID);
-        // Création d'une offre d'achat
+        // Creating a purchase offer
         marketplaceNFT.createBuyOffer{value: 20 ether}(
             address(nft),
             tokenID,
@@ -585,13 +546,13 @@ contract TestMarketplaceNFT is BaseTest {
 
         nft.approve(address(marketplaceNFT),1);
 
-        // Prépare et controle l'evenement BuyOfferAccepted à être emit
+        // Prepares and controls the BuyOfferAccepted event to be issued
         vm.expectEmit(true,false,false,false);
         emit BuyOfferAccepted(0);
 
         marketplaceNFT.acceptBuyOffer(0);
         
-        // Controle si le NFT à bien été envoyer à Bob
+        // Check that the NFT has been sent to Bob
         assertEq(nft.ownerOf(1), users.bob);
 
         assertEq(users.bob.balance, 980 ether); 
@@ -623,39 +584,14 @@ contract TestMarketplaceNFT is BaseTest {
         vm.stopPrank();
         vm.startPrank(users.bob);
 
-        // Test le revert si le prix est null
+        // Test revert if price is null
         vm.expectRevert(MarketplaceNFT.NoOwnerOfNft.selector);
         marketplaceNFT.acceptSellOffer{value: 20 ether}(0);
 
-        // Test le revert si la deadline est dépassée
+        // Test the revert if the deadline has passed
         vm.warp(3 hours);
         vm.expectRevert(MarketplaceNFT.DeadlinePassed.selector);
         marketplaceNFT.acceptSellOffer{value: 2 ether}(0);
-
-        // // Tiempo en conformidad para acceptar la offerta 
-        // vm.warp(1 hours);
-
-        // //Alice accepta la orden de venta
-        // marketplaceNFT.acceptSellOffer{value: 2 ether}(0);
-
-        // (nftAddress, tokenId,offerer, price, deadline, isEnded) = marketplaceNFT.sellOffers(0);
-       
-        // console.log(isEnded); // = true
-        // // Test le revert si l'offre est terminée
-        // vm.expectRevert(MarketplaceNFT.OfferClosed.selector);
-        // marketplaceNFT.acceptSellOffer{value: 2 ether}(0);
-
-        
-
-        // uint256 _deadline = block.timestamp;
-        // vm.warp(2 days);
-        // // Test le revert si la deadline est passé
-        // vm.expectRevert(MarketplaceNFT.DeadlinePassed.selector);
-        // marketplaceNFT.createBuyOffer{value: 20 ether}(
-        //     address(nft),
-        //     1,
-        //    _deadline
-        // );
 
     }
 
@@ -669,40 +605,41 @@ contract TestMarketplaceNFT is BaseTest {
         uint256 tokenID = 1;
         uint256 balanceAlice = users.alice.balance;
 
-        // Création d'une offre d'achat
+        // Creating a purchase offer
         marketplaceNFT.createBuyOffer{value: 1 ether}(
             address(nft),
             tokenID,
             block.timestamp + 15 days
         );
 
-        // Vérification de la création de l'offre
+        // Checking offer creation
         (, , address offerer, uint256 price, uint256 deadline, bool isEnded) = marketplaceNFT.buyOffers(0);
-        assertEq(offerer, users.alice); // Vérifier le créateur de l'offre
+       
+        assertEq(offerer, users.alice); 
         assertEq(price, 1 ether);
         assertEq(deadline, block.timestamp + 15 days);
-        assertEq(isEnded, false); // Vérifier l'état initial "non terminée"
+        assertEq(isEnded, false); 
 
-        // Controle si le balance d'Alice changer après la création de l'offre
+        // Check if Alice's balance changes after the offer is created
         assertEq(balanceAlice - price, users.alice.balance);
-        uint256 newBalanceAlice = users.alice.balance;
+        uint256 oldBalanceAlice = users.alice.balance;
 
-        // Prépare et controle l'evenement BuyOfferCancelled à être emit
+        // Prepares and controls the BuyOfferCancelled event to be issued
         vm.expectEmit(true,false,false,false);
         emit BuyOfferCancelled(0);
-        // Avance rapide au-delà de la date limite
+        // Fast advance beyond deadline
         vm.warp(16 days); // = vm.warp(block.timestamp + 16 days);
-        // Annulation de l'offre
+        // Offer cancellation
         marketplaceNFT.cancelBuyOffer(0);
 
-        // Vérification de la modification de l'état
+        // Check for status change
         (,,offerer, price, deadline, isEnded) = marketplaceNFT.buyOffers(0);
         assertEq(offerer, users.alice);
         assertEq(price, 1 ether);
-        assert(deadline < block.timestamp); // La deadline ne change pas
-        assertEq(isEnded, true); // Vérifier l'état final "terminée"
-
-        assertEq(newBalanceAlice + price, users.alice.balance);
+        assert(deadline < block.timestamp);
+        assertEq(isEnded, true); // Check "completed" final status
+        // Checks if the old balance of Alice and the price is equal to the current balance.
+        assertEq(oldBalanceAlice + price, users.alice.balance);
 
     }
 
@@ -716,39 +653,40 @@ contract TestMarketplaceNFT is BaseTest {
 
         assertEq(marketplaceNFT.buyOfferIdCounter(), 0);
 
-        // Création d'une offre d'achat
+        // Creating a purchase offer
         marketplaceNFT.createBuyOffer{value: 1 ether}(
             address(nft),
             tokenID,
             block.timestamp + 15 days
         );
 
-        // Vérification de la création de l'offre
+        // Checking offer creation
         (, , address offerer, uint256 price, uint256 deadline, bool isEnded) = marketplaceNFT.buyOffers(0);
-        assertEq(offerer, users.bob); // Vérifier le créateur de l'offre
+        
+        assertEq(offerer, users.bob); 
         assertEq(price, 1 ether);
         assertEq(deadline, block.timestamp + 15 days);
-        assertEq(isEnded, false); // Vérifier l'état initial "non terminée"
-
+        assertEq(isEnded, false); 
+        // Checks Bob's balance after executing the function
         assertEq(balanceBob - price, users.bob.balance);
         uint256 newBalanceBob = users.bob.balance;
 
         assertEq(marketplaceNFT.buyOfferIdCounter(), 1);
 
-        // Vérifie si deadline n'est pas dépassé DeadlineNotPassed() 
+        // Checks if deadline has not passed DeadlineNotPassed() 
         vm.warp(1 days);
         vm.expectRevert(MarketplaceNFT.DeadlineNotPassed.selector);
         marketplaceNFT.cancelBuyOffer(0);
 
         vm.warp(16 days);
 
-        //Vérifie l'owner de l'offre, renvoit erreur si no, NotOwner() 
+        // Checks offer owner, returns error if no, NotOwner() 
         vm.stopPrank();
         vm.startPrank(users.alice);
         vm.expectRevert(MarketplaceNFT.NotOwner.selector);
         marketplaceNFT.cancelBuyOffer(0);
 
-        // Vérifie si l'offre est terminée OfferClosed() 
+        // Checks if the offer is completed OfferClosed() 
         vm.stopPrank();
         vm.startPrank(users.bob);
         marketplaceNFT.cancelBuyOffer(0);
@@ -757,7 +695,6 @@ contract TestMarketplaceNFT is BaseTest {
         marketplaceNFT.cancelBuyOffer(0);
 
     }
-
 
      ////////////////// NFT IMAGE
     function testURI() public {
