@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {DSTest} from "ds-test/test.sol";
-import {Vm} from "forge-std/Vm.sol";
+import "forge-std/Vm.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 // Si utilise tokens: import {IERC20Metadata} from "openzeppelin/token/ERC20/extensions/IERC20Metadata.sol";
 

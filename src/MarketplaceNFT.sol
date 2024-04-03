@@ -10,15 +10,13 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 * @author Sébastien Léger
 * @notice This contract enables us to generate and execute buy and sell orders for NFT , via a Marketplace.
 */
-// interface IERC721 {
-//     function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
-// }
+
 contract MarketplaceNFT is IERC721Receiver { // 
 
    
     // ================================================================
-  // |                            STORAGE                            |
-  // ================================================================
+    // |                            STORAGE                            |
+    // ================================================================
 
     /**
         * @dev variables role
@@ -27,6 +25,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         * 'marketplaceName' : the name of the marketplace. It will be received by parameter in the contract builder.
         * 'nftContract' : Reference standard for the ERC721 token, to use its properties.
     */
+
     uint256 public sellOfferIdCounter;
     uint256 public buyOfferIdCounter;
     address payable private owner;
@@ -56,6 +55,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         * 'deadline' : the maximum date by which the offer can be accepted
         * 'isEnded' : boolean that will indicate whether the offer has already been accepted, or the offer has been cancelled
     */
+
     struct Offer {
         address nftAddress;
         uint256 tokenId;
@@ -70,14 +70,27 @@ contract MarketplaceNFT is IERC721Receiver { //
     // |                            LOGICA                            |
     // ================================================================
 
-    error DeadlinePassed();// Deadline de l'offre, passée 
-    error PriceNull(); // Mauvais prix
-    error NoOwnerOfNft(); // N'est pas l'owner du NFT
-    error BadPrice(); // Le prix de l'offre n'ai pas le prix envoyé
-    error OfferClosed(); // Offre terminée
-    error DeadlineNotPassed(); // Temps limité toujours pas passée
-    error NotOwner(); // msg.sender n'est pas le propriétaire
-    error BelowZero(); // le prix doit être supérieur à zéro
+    /**
+     * @notice Errors issued when conditions are not respected.
+     * @dev 'error'  description
+     * 'DeadlinePassed' : Offer deadline passed 
+     * 'PriceNull' : No price
+     * 'NoOwnerOfNft' : Not the owner of the NFT
+     * 'BadPrice' : The offer price is not the price sent
+     * 'OfferClosed' : Offre closed
+     * 'DeadlineNotPassed' : Limited time still not passed
+     * 'NotOwner' : msg.sender is not the owner
+     * 'BelowZero' : The price must be greater than zero
+     */
+
+    error DeadlinePassed();
+    error PriceNull(); 
+    error NoOwnerOfNft(); 
+    error BadPrice(); 
+    error OfferClosed(); 
+    error DeadlineNotPassed(); 
+    error NotOwner(); 
+    error BelowZero(); 
 
     event EtherReceived(address indexed sender, uint256 indexed amount);
     event SellOfferCreated(uint256 indexed sellOfferIdCounter);
@@ -87,14 +100,26 @@ contract MarketplaceNFT is IERC721Receiver { //
     event BuyOfferAccepted(uint256 indexed _buyOfferIdCounter);
     event BuyOfferCancelled(uint256 indexed _buyOfferIdCounter);
 
+    /**
+     * @notice modifier "NFTOwner()",
+     * @param nftAddress, address of the NFT
+     * @param tokenId, ID of the NFT
+     * @dev Is called before the execution of a function to modify it, 
+     * Checks that the NFT is that of the msg.sender.
+     */
 
-    
     modifier NFTOwner(address nftAddress, uint256 tokenId) {
         if (IERC721(nftAddress).ownerOf(tokenId) != msg.sender) {
             revert NoOwnerOfNft();
         }
         _;
     }
+
+    /**
+     * @notice constructor ,
+     * @param _marketplaceName, Marketplace name  
+     * @dev When the smart contract is launched, the marketplace needs to be given a name.
+     */
 
     constructor(string memory _marketplaceName)  {
         _marketplaceName = marketplaceName;
@@ -109,15 +134,16 @@ contract MarketplaceNFT is IERC721Receiver { //
     */
 
      function onERC721Received(
-        address operator, 
-        address from, 
-        uint256 tokenId, 
-        bytes calldata data
+        address , 
+        address , 
+        uint256 , 
+        bytes calldata 
     ) 
         external pure override returns(bytes4) {
 
             return IERC721Receiver.onERC721Received.selector;
      }
+
 
     receive() external payable {
         // Logique à exécuter lors de la réception d'Ethers
@@ -207,9 +233,7 @@ contract MarketplaceNFT is IERC721Receiver { //
 
         emit SellOfferAccepted(_sellOfferIdCounter);
     }
-    // -------------------------------------------------------------------
-    // A voir pour la création d'une fonction de fallback et receive et Send() 
-    // -----------------------------------------------------------------------------------
+    
 
     /**
         * @notice function 'cancelSellOffer' , 
@@ -275,6 +299,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         * @dev Returns an offer and its components to 'buyOffers' storage
         * by entering the tokenId.
     */
+
       function getBuyOffer(uint256 _tokenId) public view returns (Offer memory) {
         return buyOffers[_tokenId];
     }
@@ -287,6 +312,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         * of the buy order, and the ETH to the buyer of this order.
         * Emits a 'BuyOfferAccepted' event, with the offer ID as parameter.
     */
+
     function acceptBuyOffer(uint256 _buyOfferIdCounter) public {
         Offer memory buyOffer = buyOffers[_buyOfferIdCounter];
 
@@ -314,6 +340,7 @@ contract MarketplaceNFT is IERC721Receiver { //
         * to the creator of the buy order.
         * Emits a 'BuyOfferCancelled' event, with the offer ID as parameter.
     */
+
     function cancelBuyOffer(uint _buyOfferIdCounter) public {
 
         Offer memory buyOffer = buyOffers[_buyOfferIdCounter];

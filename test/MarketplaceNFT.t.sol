@@ -72,8 +72,10 @@ contract TestMarketplaceNFT is BaseTest {
         assertEq(createdOffer.price, _price); // Checks price 
         assertEq(createdOffer.deadline, _deadline); // Check deadline
         assertEq(createdOffer.isEnded, false); // Check if the offer is still open
+        
         // Check that the NFT has been transferred to the contract
         assertEq(nft.ownerOf(1), address(marketplaceNFT));
+       
         // Checks if the counter has incremented by 1
         assertEq(marketplaceNFT.sellOfferIdCounter(), 1);
         
